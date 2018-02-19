@@ -1,0 +1,36 @@
+---
+# tasks file for packer
+- name: Update apt cache if needed.
+  apt: update_cache=yes cache_valid_time=3600
+
+- name: "Install Unzip package"
+  apt: name={{ item }} state=present
+  with_items:
+    - unzip
+
+- name: register packer_installed
+  shell: "which packer"
+  register: packer_present
+  ignore_errors: yes
+  changed_when: False
+
+- name: set fact Packer is present.
+  set_fact:
+    packer_installed={{ packer_present.rc == 0 }}
+  changed_when: False
+
+- name: Check packer version
+  shell: "packer --version 2>&1 | grep {{pk_version}}"
+  failed_when: false
+  changed_when: false
+  register: pk_versions_match
+
+- name: Download Packer.
+  get_url:
+      url={{ pk_url }}
+      dest=/tmp/packer_{{ pk_version }}_{{ pk_platform }}_{{ pk_arch }}.zip
+  when: packer_installed == False or pk_versions_match.rc != 0
+
+- name: Uncompress and install Packer.
+  command: unzip -o /tmp/packer_{{ pk_version }}_{{ pk_platform }}_{{ pk_arch }}.zip -d {{ pk_installation_directory }}
+  when: packer_installed == False or pk_versions_match.rc != 0

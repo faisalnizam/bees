@@ -1,0 +1,15 @@
+---
+domain: test.streetbees.com
+
+send_to:
+  - faisal@streetbees.com
+
+prometheus_hosts:
+  - nginx.pa.streetbees.com
+  - jumper.pa.streetbees.com
+  - nfs.pa.streetbees.com
+  - ns1.pa.streetbees.com
+  - emby.pa.streetbees.com
+  - tower.pa.streetbees.com
+  - ns2.pa.streetbees.com
+  - repos.pa.streetbees.com

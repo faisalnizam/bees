@@ -1,0 +1,7 @@
+---
+# https://releases.hashicorp.com/packer/0.10.0/packer_0.10.0_linux_amd64.zip
+pk_url: https://releases.hashicorp.com/packer/{{ pk_version }}/packer_{{ pk_version }}_{{ pk_platform }}_{{ pk_arch }}.zip
+pk_installation_directory: /usr/local/bin/
+pk_version: 0.10.0
+pk_platform: linux
+pk_arch: amd64

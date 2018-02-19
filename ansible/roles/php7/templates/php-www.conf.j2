@@ -1,0 +1,29 @@
+[www]
+
+listen = {{ php_fpm_listen_ip }}:9000
+{% if php_fpm_listen_allowed_clients == 'null' %}
+; listen.allowed_clients not required
+{% else %}
+listen.allowed_clients = {{ php_fpm_listen_allowed_clients }}
+{% endif %}
+
+
+
+user = {{ app_user }}
+group = {{ app_group }}
+
+pm = dynamic
+
+pm.max_children = {{ php_fpm_pm_max_children }}
+pm.start_servers = {{ php_fpm_pm_start_servers }}
+pm.min_spare_servers = {{ php_fpm_pm_min_spare_servers }}
+pm.max_spare_servers = {{ php_fpm_pm_max_spare_servers }}
+pm.max_requests = {{ php_fpm_pm_max_requests }}
+
+pm.status_path = /fpm-server-status
+
+slowlog = /var/log/php-fpm/www-slow.log
+
+php_admin_value[error_log] = /var/log/php-fpm/www-error.log
+php_admin_flag[log_errors] = on
+catch_workers_output = yes

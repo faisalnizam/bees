@@ -1,0 +1,3 @@
+SetEnvIf REMOTE_ADDR "(.+)" CLIENTIP=$1
+SetEnvIf X-Forwarded-For "^([0-9.]+)" CLIENTIP=$1
+LogFormat "%{CLIENTIP}e %D %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"" trueip_combined

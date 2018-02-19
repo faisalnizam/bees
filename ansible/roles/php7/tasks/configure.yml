@@ -1,0 +1,61 @@
+---
+- name: Ensure configuration directories exist.
+  file:
+    path: "{{ item }}"
+    state: directory
+    follow: true
+  with_items:
+    - "{{ php_conf_path }}"
+    - "{{ php_extension_conf_path }}"
+
+- name: Place PHP  Sessions configuration file in place.
+  template:
+    src: session.ini.j2
+    dest: "{{ php_extension_conf_path }}/session.ini"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Place PHP  AWS configuration file in place.
+  template:
+    src: aws.ini.j2
+    dest: "{{ php_extension_conf_path }}/aws.ini"
+    owner: root
+    group: root
+    mode: 0644
+
+
+- name: Place APC configuration file in place.
+  template:
+    src: apc.ini.j2
+    dest: "{{ php_extension_conf_path }}/{{ php_apc_conf_filename }}"
+    owner: root
+    group: root
+    force: yes
+    mode: 0644
+  when: php_enable_apc
+
+- name: Make sure the default opcache.ini file is not there
+  file:
+    path: "{{ php_extension_conf_path }}/opcache.ini"
+    state: absent
+
+- name: Place OpCache configuration file in place.
+  template:
+    src: opcache.ini.j2
+    dest: "{{ php_extension_conf_path }}/{{ php_opcache_conf_filename }}"
+    owner: root
+    group: root
+    force: yes
+    mode: 0644
+
+
+- name: Place MONGODB INI conf file in place.
+  template:
+    src: mongodb.ini.j2
+    dest: "{{ php_extension_conf_path }}/mongodb.ini"
+    owner: root
+    group: root
+    force: yes
+    mode: 0644
+

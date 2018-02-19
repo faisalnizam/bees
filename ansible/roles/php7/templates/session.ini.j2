@@ -1,0 +1,5 @@
+session.save_handler = redis
+session.save_path ="{% if redis_session_save_url is defined %}{{ redis_session_save_url }}{% else %}localhost{% endif %}:6379"
+session.gc_maxlifetime = 2592000
+session.cookie_lifetime = 31560000
+

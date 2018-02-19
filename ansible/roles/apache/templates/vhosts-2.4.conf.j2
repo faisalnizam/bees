@@ -1,0 +1,111 @@
+Listen 443 http
+Listen 88 http
+Listen 1443
+
+<VirtualHost *:1443>
+  DocumentRoot /var/www/html/public
+<Directory "/var/www/html/public">
+  Require all granted
+  Require ip 127.0.0.1
+</Directory>
+</VirtualHost>
+
+{{ apache_global_vhost_settings }}
+
+
+<VirtualHost _default_:80>
+ DocumentRoot {{ appdir }}/healthcheck
+</VirtualHost>
+
+<VirtualHost *:443>
+  ServerName default
+  Redirect 404 /
+</VirtualHost>
+<VirtualHost _default_:443>
+  Redirect 404 /
+</VirtualHost>
+
+<VirtualHost _default_:88>
+ DocumentRoot {{ appdir }}/public
+ RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
+ RewriteRule ^(.*) - [E=BASE:%1]
+ RewriteRule ^(.*)$ %{ENV:BASE}index.php [NC,L]
+</VirtualHost>
+
+
+
+{# Set up VirtualHosts #}
+{% for vhost in apache_vhosts %}
+<VirtualHost *:{{ apache_listen_port }}>
+  ServerName {{ vhost.servername }}
+{% if vhost.serveralias is defined %}
+  ServerAlias {{ vhost.serveralias }}
+{% endif %}
+{% if vhost.documentroot is defined %}
+  DocumentRoot {{ vhost.documentroot }}
+{% endif %}
+
+{% if vhost.serveradmin is defined %}
+  ServerAdmin {{ vhost.serveradmin }}
+{% endif %}
+{% if vhost.extra_parameters is defined %}
+  {{ vhost.extra_parameters }}
+{% endif %}
+{% if vhost.documentroot is defined %}
+  <Directory "{{ vhost.documentroot }}">
+{% if vhost.directory_parameters is defined %}
+   {{ vhost.directory_parameters }}
+{% endif %}
+  </Directory>
+{% endif %}
+</VirtualHost>
+
+{% endfor %}
+
+{# Set up SSL VirtualHosts #}
+{% for vhost in apache_vhosts_ssl %}
+{% if apache_ignore_missing_ssl_certificate or apache_ssl_certificates.results[loop.index0].stat.exists %}
+<VirtualHost *:{{ apache_listen_port_ssl }}>
+  ServerName {{ vhost.servername }}
+{% if vhost.serveralias is defined %}
+  ServerAlias {{ vhost.serveralias }}
+{% endif %}
+{% if vhost.documentroot is defined %}
+  DocumentRoot {{ vhost.documentroot }}
+{% endif %}
+
+  SSLEngine on
+  SSLCipherSuite {{ apache_ssl_cipher_suite }}
+  SSLProtocol {{ apache_ssl_protocol }}
+  SSLHonorCipherOrder On
+  SSLCompression off
+  SSLCertificateFile {{ vhost.certificate_file }}
+  SSLCertificateKeyFile {{ vhost.certificate_key_file }}
+{% if vhost.certificate_chain_file is defined %}
+  SSLCertificateChainFile {{ vhost.certificate_chain_file }}
+{% endif %}
+
+{% if vhost.serveradmin is defined %}
+  ServerAdmin {{ vhost.serveradmin }}
+{% endif %}
+{% if vhost.documentroot is defined %}
+  <Directory "{{ vhost.documentroot }}">
+    AllowOverride All
+    Options -Indexes +FollowSymLinks
+    Require all granted
+  </Directory>
+{% endif %}
+{% if vhost.extra_parameters is defined %}
+  {{ vhost.extra_parameters }}
+{% endif %}
+</VirtualHost>
+
+{% endif %}
+{% endfor %}
+
+<VirtualHost 127.0.0.1:88>
+  <Location "/server-status">
+    SetHandler server-status
+  </Location>
+
+</VirtualHost>

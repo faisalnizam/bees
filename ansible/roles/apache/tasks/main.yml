@@ -1,0 +1,77 @@
+---
+# tasks file for apache
+
+
+- name: Define apache_packages.
+  set_fact:
+    apache_packages: "{{ __apache_packages | list }}"
+  when: apache_packages is not defined
+
+- set_fact:
+    ansible_python_default_interpreter: /usr/bin/python
+    ansible_python_interpreter:  /usr/bin/python
+
+- name: Ensure Apache is installed.
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ apache_packages }}"
+  environment:
+    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+  when: (environment != "dev")
+
+
+# Figure out what version of Apache is installed.
+- name: Get installed version of Apache.
+  shell: "{{ apache_daemon_path }}{{ apache_daemon }} -v"
+  changed_when: false
+  always_run: yes
+  register: _apache_version
+
+
+- name: Enable http basic authentication if required
+  template: 
+    src: "htpasswd.j2"
+    dest: "/etc/httpd/htpasswd"
+  when: htpasswd_enabled
+
+- name: Add apache vhosts configuration.
+  template:
+    src: "vhosts-{{ apache_vhosts_version }}.conf.j2"
+    dest: "{{ apache_conf_path }}/{{ apache_vhosts_filename }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart apache
+  when: apache_create_vhosts
+
+- name: Add apache main httpd configuration.
+  template:
+    src: httpd.conf.j2
+    dest: /etc/httpd/conf/httpd.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Add apache module configurations.
+  copy: src={{ item }} dest=/etc/httpd/conf.modules.d/
+  with_fileglob:
+    - module-configs/*.conf
+
+- name: Create httpd log Directory if not exist
+  file: path=/var/log/httpd owner={{ app_user }} group={{ app_group }} state=directory
+
+- name: Add Apache Log Configuration
+  template: src=logs.conf.j2 dest=/etc/httpd/conf.d/logs.conf owner=root group=root mode=644
+  notify: restart apache
+
+
+- name: Ensure Apache has selected state and enabled on boot.
+  service:
+    name: "{{ apache_service }}"
+    state: "{{ apache_state }}"
+    enabled: yes
+  environment:
+    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+

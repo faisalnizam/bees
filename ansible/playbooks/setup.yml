@@ -1,0 +1,12 @@
+---
+- name: Set up prometheus
+  hosts: prom-01
+  gather_facts: true
+  user: ec2-user
+  become: true
+  vars_files:
+  - ../group_vars/careem.yml
+
+  roles:
+    - prometheus
+    - node_exporter

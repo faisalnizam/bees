@@ -1,0 +1,40 @@
+---
+- name: Define php_fpm_daemon.
+  set_fact:
+    php_fpm_daemon: "{{ __php_fpm_daemon }}"
+  when: php_fpm_daemon is not defined
+
+- name: Define php_fpm_pool_conf_path.
+  set_fact:
+    php_fpm_pool_conf_path: "{{ __php_fpm_pool_conf_path }}"
+  when: php_fpm_pool_conf_path is not defined
+
+- name: Configure php-fpm pool
+  template:
+    src: "php-www.conf.j2"
+    dest: "/etc/php-fpm.d/www.conf"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Configure php-fpm conf file
+  template:
+    src: "php-fpm.conf.j2"
+    dest: "/etc/php-fpm.conf"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Ensure PHP-FPM is shut down
+  command: /etc/init.d/php-fpm stop
+  ignore_errors: yes
+
+- name: Ensure PHP-FPM is restarted safely
+  command: pkill -f php-fpm
+  ignore_errors: yes
+
+- name: Ensure php-fpm is started and enabled at boot (if configured).
+  service:
+    name: "{{ php_fpm_daemon }}"
+    state: started
+    enabled: yes

@@ -1,0 +1,149 @@
+---
+# Variable setup.
+
+
+- set_fact:
+    ansible_python_default_interpreter: /usr/bin/python
+    ansible_python_interpreter:  /usr/bin/python
+
+
+- name: Define php_packages.
+  set_fact:
+    php_packages: "{{ __php7_packages | list }}"
+  when: php_packages is not defined
+
+- name: Define php_webserver_daemon.
+  set_fact:
+    php_webserver_daemon: "{{ __php_webserver_daemon }}"
+  when: php_webserver_daemon is not defined
+
+- name: Define php_conf_path.
+  set_fact:
+    php_conf_path: "{{ __php_conf_path }}"
+  when: php_conf_path is not defined
+
+- name: Define php_extension_conf_path.
+  set_fact:
+    php_extension_conf_path: "{{ __php_extension_conf_path }}"
+  when: php_extension_conf_path is not defined
+
+- name: Define php_apc_conf_filename.
+  set_fact:
+    php_apc_conf_filename: "{{ __php_apc_conf_filename }}"
+  when: php_apc_conf_filename is not defined
+
+- name: Define php_opcache_conf_filename.
+  set_fact:
+    php_opcache_conf_filename: "{{ __php_opcache_conf_filename }}"
+  when: php_opcache_conf_filename is not defined
+
+- name: Remove PHP.ini file from /etc folder
+  file:
+    path: /etc/php.ini
+    state: absent
+
+- name: Remove unwanted .ini file from /etc folder
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_fileglob:
+    - /etc/php.d/php.ini
+    - /etc/php-7.0.ini
+    - /etc/php.d/*-igbinary.ini
+    - /etc/php.d/*-imagick.ini
+    - /etc/php.d/*-memcached.ini
+
+# Remove php70-pecl* packages as they are forced installed on elasticbeanstalk
+- name: Ensure PHP70 PECL RPMS are removed.
+  yum:
+    name: php70-pecl*
+    state: removed
+
+# Setup/install tasks.
+- name: Ensure PHP packages are installed.
+  yum:
+    name: "{{ item }}"
+    state: installed
+    enablerepo: "{{ php_enablerepo }}"
+  with_items: "{{ php_packages }}"
+  when: (environment != "dev")
+
+- name: Place PHP configuration file in place.
+  template:
+    src: php.ini.j2
+    dest: "{{ php_conf_path }}/php.ini"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Link php.ini to default /etc/php.ini
+  file:
+    src: "{{ php_conf_path }}/php.ini"
+    dest: /etc/php.ini
+    state: link
+
+- name: Ensure php-fpm init script is copied
+  template: src=php-fpm-init.j2 dest=/etc/init.d/php-fpm 
+
+#- name: Install PHP extension 
+#  shell:  pecl7 install mongodb igbinary memcached imagick redis
+#  ignore_errors: yes
+
+- name: Install PECL7 extensions.
+  shell: "echo '' |{{ php_pecl_install_command }} {{ item }}"
+  register: pecl_result
+  changed_when: "pecl_result.rc == 0"
+  failed_when: "not (('already installed' in pecl_result.stdout) or ('install ok:' in pecl_result.stdout))"
+  with_items: "{{ php_pecl_extensions }}"
+
+
+
+
+- name: Check the installed version of PHP.
+  shell: '{{ php_executable }} -r "echo PHP_VERSION;"'
+  register: php_installed_version
+  changed_when: false
+  always_run: yes
+
+- local_action: stat path=/opt/pecl-gearman-gearman-2.0.3
+  register: gearman_ext_dir
+
+
+- name: Install gearman extension
+  shell: "{{ item }}"
+  args:
+    chdir: /opt
+  with_items:
+    - curl -sL https://github.com/wcgallego/pecl-gearman/archive/gearman-2.0.3.tar.gz | tar xz
+    - cd pecl-gearman-gearman-2.0.3 && phpize && ./configure && make && make install
+  environment:
+    PATH: '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin:/root/bin'
+  when: gearman_ext_dir.stat.exists == False
+
+
+
+- name: Gearman php config file
+  template: src=gearman.ini.j2 dest={{ php_extension_conf_path }}/gearman.ini
+
+- name: memcached php config file
+  template: src=memcached.ini.j2 dest={{ php_extension_conf_path }}/memcached.ini
+
+- name: redis php config file
+  template: src=redis.ini.j2 dest={{ php_extension_conf_path }}/redis.ini
+
+- name: igbinary php config file
+  template: src=igbinary.ini.j2 dest={{ php_extension_conf_path }}/igbinary.ini
+
+- name: imagick php config file
+  template: src=imagick.ini.j2 dest={{ php_extension_conf_path }}/imagick.ini
+
+- name: Add line in upload.ini
+  lineinfile:  dest={{ php_extension_conf_path }}/upload.ini line="upload_max_filesize=100M" state=present create=yes
+
+
+
+# Configure PHP.
+- include: configure.yml
+
+# Configure PHP-FPM.
+- include: configure-fpm.yml
