@@ -1,12 +1,11 @@
 ---
-- name: Set up prometheus
-  hosts: prom-01
+- name: Set up server
+  hosts: all
   gather_facts: true
-  user: ec2-user
+  user: centos
   become: true
-  vars_files:
-  - ../group_vars/careem.yml
 
   roles:
-    - prometheus
-    - node_exporter
+    - nginx
+    - ruby 
+    - docker

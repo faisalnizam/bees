@@ -1,58 +1,12 @@
 ---
-# tasks file for common
+- name: gather facts
+  setup:
 
+- name: Perform Safe Upgrade
+  apt: upgrade=safe update_cache=yes
 
-- name: Ensure the EPEL Core Yum repo is present
-  copy:
-      dest: /etc/yum.repos.d/epel.repo
-      content: |
-        [epel]
-        name=epel
-        mirrorlist=http://mirrors.fedoraproject.org/metalink?repo=epel-6&arch=$basearch
-        enabled=1
-        gpgcheck=0
-      owner: root
-      group: root
-      mode: 0644
-
-- set_fact:
-    ansible_python_default_interpreter: /usr/bin/python
-    ansible_python_interpreter:  /usr/bin/python
-
-- name: Ensure common packages are installed.
-  yum:
-    name: "{{ item }}"
-    state: installed
-  with_items: "{{ common_packages }}"
-
-- name: User and Group configurations 
-  user:
-    name: "{{ app_user }}"
-    shell: /bin/bash
-    #    groups: apache
-    append: yes 
-
-- name: Allow app user to have sudo prev
-  lineinfile:
-    dest: /etc/sudoers
-    state: present
-    regexp: '^%{{ app_user }}'
-    line: '%{{ app_user }} ALL=(ALL) NOPASSWD: ALL'
-
-- name: Chown of the app dir to app user
-  file:
-    path: "{{ appdir }}"
-    state: directory
-    owner: "{{ app_user }}"
-    recurse: yes
-  ignore_errors: true
-  when: environment != "dev"
-
-- name: Create log folders
-  file: path={{ item }} state=directory mode=0777
-  with_items: "{{ common_directories }}"
-
-- name: Create common necessery files
-  file: path={{ item }} state=touch mode=0766
-  with_items: "{{ common_files }}"
-
+- include: hostname.yml
+- include: swap.yml
+  when: swap_enabled is defined and swap_enabled == true
+- include: tools.yml
+- include: locale.yml
